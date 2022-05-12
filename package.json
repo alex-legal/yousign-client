@@ -1,5 +1,5 @@
 {
-  "name": "@asaroukou/yousign",
+  "name": "@alexlegal/yousign",
   "packageManager": "yarn@3.1.1",
   "main": "src/api.ts",
   "types": "src/api.ts",
