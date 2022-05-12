@@ -1,0 +1,13 @@
+{
+  "name": "yousign",
+  "packageManager": "yarn@3.1.1",
+  "main": "src/api.ts",
+  "types": "src/api.ts",
+  "scripts": {
+    "postinstall": "yarn run generate",
+    "generate": "swagger-typescript-api -p ./swagger.json -o ./src -n api.ts"
+  },
+  "devDependencies": {
+    "swagger-typescript-api": "^9.3.1"
+  }
+}
