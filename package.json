@@ -1,5 +1,5 @@
 {
-  "name": "yousign",
+  "name": "@asaroukou/yousign",
   "packageManager": "yarn@3.1.1",
   "main": "src/api.ts",
   "types": "src/api.ts",
@@ -9,5 +9,21 @@
   },
   "devDependencies": {
     "swagger-typescript-api": "^9.3.1"
-  }
+  },
+  "description": "Yousign client",
+  "version": "0.0.1",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alex-legal/yousign-client.git"
+  },
+  "keywords": [
+    "yousign",
+    "client"
+  ],
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/alex-legal/yousign-client/issues"
+  },
+  "homepage": "https://github.com/alex-legal/yousign-client#readme"
 }
