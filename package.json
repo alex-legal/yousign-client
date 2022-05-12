@@ -4,7 +4,6 @@
   "main": "src/api.ts",
   "types": "src/api.ts",
   "scripts": {
-    "prepublish": "yarn run generate",
     "generate": "swagger-typescript-api -p ./swagger.json -o ./src -n api.ts"
   },
   "devDependencies": {
