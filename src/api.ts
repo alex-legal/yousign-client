@@ -186,7 +186,7 @@ export class HttpClient<SecurityDataType = unknown> {
         ...(requestParams.headers || {}),
         ...(type && type !== ContentType.FormData ? { "Content-Type": type } : {}),
       },
-      signal: cancelToken ? this.createAbortSignal(cancelToken) : requestParams.signal,
+      signal: (cancelToken ? this.createAbortSignal(cancelToken) : requestParams.signal) || null,
       body: typeof body === "undefined" || body === null ? null : payloadFormatter(body),
     }).then(async (response) => {
       const r = response as HttpResponse<T, E>;
@@ -352,7 +352,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
                 | "electronic_signature_with_qualified_certificate"
                 | "qualified_electronic_signature_mode_1";
               /** @default null */
-              signature_authentication_mode?: null | "otp_email" | "otp_sms" | "no_otp";
+              signature_authentication_mode?: "otp_email" | "otp_sms" | "no_otp" | null;
               redirect_urls?: {
                 /**
                  * @minLength 1
@@ -404,7 +404,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
                 | "electronic_signature_with_qualified_certificate"
                 | "qualified_electronic_signature_mode_1";
               /** @default null */
-              signature_authentication_mode?: null | "otp_email" | "otp_sms" | "no_otp";
+              signature_authentication_mode?: "otp_email" | "otp_sms" | "no_otp" | null;
               redirect_urls?: {
                 /**
                  * @minLength 1
@@ -456,7 +456,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
                 | "electronic_signature_with_qualified_certificate"
                 | "qualified_electronic_signature_mode_1";
               /** @default null */
-              signature_authentication_mode?: null | "otp_email" | "otp_sms" | "no_otp";
+              signature_authentication_mode?: "otp_email" | "otp_sms" | "no_otp" | null;
               redirect_urls?: {
                 /**
                  * @minLength 1
@@ -492,177 +492,6 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
                 reminder_body?: string | null;
               };
             }
-          | ({
-              /** create new signer */
-              info: {
-                /**
-                 * @minLength 1
-                 * @maxLength 255
-                 */
-                first_name: string;
-                /**
-                 * @minLength 1
-                 * @maxLength 255
-                 */
-                last_name: string;
-                /**
-                 * @format email
-                 * @minLength 1
-                 */
-                email: string;
-                /**
-                 * E.164 format. Becomes mandatory if `signature_authentication_mode` requires a phone number.
-                 * @minLength 1
-                 */
-                phone_number?: string | null;
-                locale: any;
-              };
-              fields?: any[];
-              /** @default "electronic_signature" */
-              signature_level:
-                | "electronic_signature"
-                | "advanced_electronic_signature"
-                | "electronic_signature_with_qualified_certificate"
-                | "qualified_electronic_signature_mode_1";
-              /** @default null */
-              signature_authentication_mode?: null | "otp_email" | "otp_sms" | "no_otp";
-              redirect_urls?: {
-                /**
-                 * @minLength 1
-                 * @maxLength 255
-                 */
-                success?: string | null;
-                /**
-                 * @minLength 1
-                 * @maxLength 255
-                 */
-                error?: string | null;
-              };
-              custom_text?: {
-                /**
-                 * @minLength 1
-                 * @maxLength 150
-                 */
-                request_subject?: string | null;
-                /**
-                 * @minLength 1
-                 * @maxLength 500
-                 */
-                request_body?: string | null;
-                /**
-                 * @minLength 1
-                 * @maxLength 150
-                 */
-                reminder_subject?: string | null;
-                /**
-                 * @minLength 1
-                 * @maxLength 500
-                 */
-                reminder_body?: string | null;
-              };
-            } & {
-              /**
-               * Create signer from an existing user
-               * @format uuid
-               * @pattern ^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
-               * @example "8b6ed2f3-244f-487a-baa1-bbe4f51c8744"
-               */
-              user_id: string;
-              fields?: any[];
-              /** @default "electronic_signature" */
-              signature_level:
-                | "electronic_signature"
-                | "advanced_electronic_signature"
-                | "electronic_signature_with_qualified_certificate"
-                | "qualified_electronic_signature_mode_1";
-              /** @default null */
-              signature_authentication_mode?: null | "otp_email" | "otp_sms" | "no_otp";
-              redirect_urls?: {
-                /**
-                 * @minLength 1
-                 * @maxLength 255
-                 */
-                success?: string | null;
-                /**
-                 * @minLength 1
-                 * @maxLength 255
-                 */
-                error?: string | null;
-              };
-              custom_text?: {
-                /**
-                 * @minLength 1
-                 * @maxLength 150
-                 */
-                request_subject?: string | null;
-                /**
-                 * @minLength 1
-                 * @maxLength 500
-                 */
-                request_body?: string | null;
-                /**
-                 * @minLength 1
-                 * @maxLength 150
-                 */
-                reminder_subject?: string | null;
-                /**
-                 * @minLength 1
-                 * @maxLength 500
-                 */
-                reminder_body?: string | null;
-              };
-            } & {
-              /**
-               * Create signer from an existing contact
-               * @format uuid
-               * @pattern ^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
-               * @example "ddecfb85-8a45-4254-b940-6171b8df0a90"
-               */
-              contact_id: string;
-              fields?: any[];
-              /** @default "electronic_signature" */
-              signature_level:
-                | "electronic_signature"
-                | "advanced_electronic_signature"
-                | "electronic_signature_with_qualified_certificate"
-                | "qualified_electronic_signature_mode_1";
-              /** @default null */
-              signature_authentication_mode?: null | "otp_email" | "otp_sms" | "no_otp";
-              redirect_urls?: {
-                /**
-                 * @minLength 1
-                 * @maxLength 255
-                 */
-                success?: string | null;
-                /**
-                 * @minLength 1
-                 * @maxLength 255
-                 */
-                error?: string | null;
-              };
-              custom_text?: {
-                /**
-                 * @minLength 1
-                 * @maxLength 150
-                 */
-                request_subject?: string | null;
-                /**
-                 * @minLength 1
-                 * @maxLength 500
-                 */
-                request_body?: string | null;
-                /**
-                 * @minLength 1
-                 * @maxLength 150
-                 */
-                reminder_subject?: string | null;
-                /**
-                 * @minLength 1
-                 * @maxLength 500
-                 */
-                reminder_body?: string | null;
-              };
-            })
         )[];
         /**
          * Scope the signature request to a specific workspace
@@ -1973,7 +1802,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
             | "electronic_signature_with_qualified_certificate"
             | "qualified_electronic_signature_mode_1";
           /** @default null */
-          signature_authentication_mode: null | "otp_email" | "otp_sms" | "no_otp";
+          signature_authentication_mode: "otp_email" | "otp_sms" | "no_otp" | null;
           /**
            * @format uri
            * @minLength 1
@@ -2896,80 +2725,6 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
               /** @maxLength 80 */
               text?: string;
             }
-          | ({
-              /** @example "seal" */
-              type: "seal" | "read_only_text";
-              /**
-               * @min 1
-               * @max 32767
-               * @example 200
-               */
-              height: number;
-              /**
-               * @min 1
-               * @max 32767
-               * @example 250
-               */
-              width: number;
-              /**
-               * @min 1
-               * @max 32767
-               * @example 1
-               */
-              page: number;
-              /**
-               * @min 0
-               * @max 32767
-               * @example 0
-               */
-              x: number;
-              /**
-               * @min 0
-               * @max 32767
-               * @example 0
-               */
-              y: number;
-              /**
-               * @maxLength 200
-               * @pattern ^(?!\s)[0-9A-Za-zĄÀÁÂÃÄÅÇĆÈÉÊËĘÌÍÎÏŁÑŃÒÓÔÕÖŚÙÚÛÜÝŹŻąàáâãäåæçćèéêëęìíîïłñńòóôõöśùúûüýÿźżß`\'()\- ]+(?<!\s)$
-               */
-              reason?: string | null;
-            } & {
-              /** @example "read_only_text" */
-              type: "read_only_text";
-              /**
-               * @min 1
-               * @max 32767
-               * @example 200
-               */
-              height: number;
-              /**
-               * @min 1
-               * @max 32767
-               * @example 250
-               */
-              width: number;
-              /**
-               * @min 1
-               * @max 32767
-               * @example 1
-               */
-              page: number;
-              /**
-               * @min 0
-               * @max 32767
-               * @example 0
-               */
-              x: number;
-              /**
-               * @min 0
-               * @max 32767
-               * @example 0
-               */
-              y: number;
-              /** @maxLength 80 */
-              text?: string;
-            })
         )[];
         signature_level?: "electronic_signature" | "advanced_electronic_signature" | null;
       },

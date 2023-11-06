@@ -4,12 +4,10 @@
   "main": "src/api.ts",
   "types": "src/api.ts",
   "scripts": {
-    "generate": "yarn run generate-v2 && yarn run generate-v3",
-    "generate-v2": "swagger-typescript-api -p ./swagger-v2.json -o ./src -n api-v2.ts",
-    "generate-v3": "swagger-typescript-api -p ./swagger-v3.json -o ./src -n api.ts"
+    "generate": "swagger-typescript-api -p ./swagger-v3.json -o ./src -n api.ts"
   },
   "devDependencies": {
-    "swagger-typescript-api": "^12.0.4"
+    "swagger-typescript-api": "^13.0.3"
   },
   "description": "Yousign client",
   "version": "0.0.4",
