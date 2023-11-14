@@ -3,7 +3,7 @@
 HttpClient generated from the latest version of yousign swagger.json file.
 
 ```
-The swagger.json can be retrieve here: [https://developers.yousign.com/reference/oas-specification](https://developers.yousign.com/reference/oas-specification)
+The swagger.json can be retrieved here: [https://developers.yousign.com/reference/oas-specification](https://developers.yousign.com/reference/oas-specification)
 
 ### Breaking changes:
 
