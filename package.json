@@ -10,7 +10,7 @@
     "swagger-typescript-api": "^13.0.3"
   },
   "description": "Yousign client",
-  "version": "0.0.4",
+  "version": "1.0.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/alex-legal/yousign-client.git"
