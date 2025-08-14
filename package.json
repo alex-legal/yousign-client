@@ -4,7 +4,7 @@
   "main": "src/api.ts",
   "types": "src/api.ts",
   "scripts": {
-    "generate": "swagger-typescript-api -p ./swagger-v3.json -o ./src -n api.ts"
+    "generate": "swagger-typescript-api generate -p ./swagger-v3.json -o ./src -n api.ts"
   },
   "devDependencies": {
     "swagger-typescript-api": "^13.2.8"
