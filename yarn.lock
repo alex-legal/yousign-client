@@ -7,7 +7,7 @@
   resolved "https://registry.npmjs.org/@biomejs/js-api/-/js-api-2.0.3.tgz"
   integrity sha512-fg4hGhg1LtohDqLdG9uggROlVsydcuFwZhPoUOTi9+bkvGMULDKL9dEP5iN6++CIA/AN0T20U82rLYuaxc+VDQ==
 
-"@biomejs/wasm-nodejs@^2.1.1", "@biomejs/wasm-nodejs@2.1.4":
+"@biomejs/wasm-nodejs@2.1.4":
   version "2.1.4"
   resolved "https://registry.npmjs.org/@biomejs/wasm-nodejs/-/wasm-nodejs-2.1.4.tgz"
   integrity sha512-BuvuOiXtTJg9w5+ApMXeJDD5H+XkIJSazIjPJeIxfkCqzVtCByLjCqPC6gbECbylRl9IhrZMWVIskTD6aJ9MzA==
@@ -192,9 +192,9 @@ js-yaml@^4.1.0:
     argparse "^2.0.1"
 
 lodash@^4.17.21:
-  version "4.17.21"
-  resolved "https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz"
-  integrity sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==
+  version "4.17.23"
+  resolved "https://registry.yarnpkg.com/lodash/-/lodash-4.17.23.tgz#f113b0378386103be4f6893388c73d0bde7f2c5a"
+  integrity sha512-LgVTMpQtIopCi79SJeDiP0TfWi5CNEc/L/aRdTh3yIvmZXTnheWpKjSZhnvMl8iXbC1tFg9gdHHDMLoV7CnG+w==
 
 nanoid@^5.1.5:
   version "5.1.5"
