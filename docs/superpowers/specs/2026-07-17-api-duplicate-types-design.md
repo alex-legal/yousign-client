@@ -1,4 +1,4 @@
-# Design: Disambiguate colliding schema names & ship compiled `dist`
+# Design: Fix duplicate schema types (pin generator) & ship compiled `dist`
 
 **Date:** 2026-07-17
 **Status:** Approved
@@ -6,190 +6,188 @@
 
 ## Problem
 
-The Yousign OpenAPI spec (`swagger-v3.json`) defines pairs of schema components whose
-names differ only by casing and underscores:
+The generated `src/api.ts` declares some exported symbols twice — e.g.
+`SignatureRequestEmailNotification` appears as both an `export type` and an
+`export interface`, and likewise `SignatureRequestEmailNotificationSender`. This is
+illegal TypeScript — **TS2300: Duplicate identifier**; a type alias and an interface of
+the same name can never merge. Lenient toolchains (swc, Next.js) strip types without full
+checking and tolerate it, but stricter parsers — notably the oxc/rolldown parser used by
+our bundler — reject the file outright. Consumers currently carry a local patch that
+deletes one of the two declarations, which is also subtly wrong (the two colliding
+schemas have different shapes and different `$ref`s point at each).
 
-| Raw schema key | Shape | Referenced by |
-|---|---|---|
-| `SignatureRequest_EmailNotification` | has `custom_text` + **deprecated** `custom_note`, `nullable`, `minProperties: 1` | `CreateSignatureRequest`, `UpdateSignatureRequest` (write / input) |
-| `SignatureRequest_email_notification` | `custom_note` **required**, no `custom_text` | `SignatureRequest` (read / response) |
-| `SignatureRequest_EmailNotification_Sender` | `type` / `custom_name` optional | the write notification's `sender` |
-| `SignatureRequest_email_notification_sender` | `type` / `custom_name` **required** | the read notification's `sender` |
+### Root cause (established by investigation)
 
-When `swagger-typescript-api` normalizes schema names to PascalCase TypeScript
-identifiers, each pair collapses to the same name — `SignatureRequestEmailNotification`
-and `SignatureRequestEmailNotificationSender`. The generated `src/api.ts` therefore
-declares each symbol twice (once as `export type`, once as `export interface`).
+The duplicates originate in the Yousign OpenAPI spec (`swagger-v3.json`), which defines
+pairs of schema components whose names differ only by casing/underscores — e.g.
+`SignatureRequest_EmailNotification` (write model: has `custom_text` + deprecated
+`custom_note`, used by `CreateSignatureRequest`/`UpdateSignatureRequest`) and
+`SignatureRequest_email_notification` (read model: required `custom_note`, no
+`custom_text`, used by the `SignatureRequest` response). Old versions of
+`swagger-typescript-api` normalized both to the same PascalCase identifier, emitting a
+duplicate.
 
-This is illegal TypeScript — **TS2300: Duplicate identifier**; a type alias and an
-interface of the same name can never merge. Lenient toolchains (swc, Next.js) strip
-types without full checking and tolerate it, but stricter parsers — notably the
-oxc/rolldown parser used by our bundler — reject the file outright. Consumers currently
-carry a local patch that deletes one of the two declarations.
+Two facts found during investigation:
 
-That patch is also **subtly wrong**: the two colliding schemas have genuinely different
-shapes, and `$ref`s point at each. Blindly dropping one declaration silently gives every
-reference to the dropped schema the wrong type (e.g. the read model would lose its
-required `custom_note` / gain a non-existent `custom_text`).
+1. **`swagger-typescript-api` is pinned only as `^13.2.8`** (an unpinned caret range). A
+   generated, committed artifact whose generator floats across a caret range is
+   non-deterministic: `generate` produces materially different output depending on when
+   dependencies were installed (e.g. exact `13.2.8` emits ~18.5k lines; `13.12.5` emits
+   ~12.7k lines from the same spec). This non-determinism is the underlying defect.
+2. **Modern `swagger-typescript-api` (13.12.5) already fixes the collision.** With no
+   custom configuration it emits the two variants as distinct, correctly-`$ref`-wired
+   types and produces **zero duplicate identifiers** in the whole file:
+   - `SignatureRequestEmailNotification` / `SignatureRequestEmailNotificationSender`
+     (write) ← referenced by `CreateSignatureRequest` / `UpdateSignatureRequest`.
+   - `SignatureRequestEmailNotificationResponse` /
+     `SignatureRequestEmailNotificationResponseSender` (read) ← referenced by the
+     `SignatureRequest` response. (`Response` is the generator's own built-in
+     disambiguation suffix.)
 
-The fix belongs in this package: emit both variants as distinct, valid types so no
-consumer patch is needed — and additionally ship a compiled `dist/` so downstream
-bundlers never parse the TypeScript source at all.
+The committed `src/api.ts` (~12.4k lines, compact formatting) was produced by some
+mid-range 13.x that is compact **but predates the collision fix**, so it still contains
+the duplicates.
 
 ## Chosen approach
 
-### 1. Disambiguation via the generator's own `onFormatTypeName` hook
+### 1. Pin the generator and regenerate
 
-`swagger-typescript-api` v13 exposes a `--custom-config <file>` flag (loaded via `c12`)
-whose config is deep-merged (`lodash.merge`) with the generator defaults. The
-`hooks.onFormatTypeName(formattedName, rawName, schemaType)` hook lets us override the
-emitted identifier for a given **raw** schema name.
+- Pin `swagger-typescript-api` to the **exact** version `13.12.5` in `devDependencies`
+  (drop the caret). This simultaneously (a) makes `generate` reproducible and (b) fixes
+  the duplicate-identifier collision via the upstream generator — **no custom
+  configuration is needed**.
+- Regenerate `src/api.ts` from the pristine, unmodified `swagger-v3.json`. The generate
+  command is unchanged except for the pinned dependency:
+  `swagger-typescript-api generate -p ./swagger-v3.json -o ./src -n api.ts`.
 
-Internals that make this correct (verified by reading `swagger-typescript-api@13.2.8`
-`dist/src-*.js`):
+The resulting file has zero duplicate identifiers and compiles clean under
+`tsc --strict` (verified: `tsc` exits 0, zero TS2300).
 
-- `TypeNameFormatter.format(name)` caches by the **raw** name and calls
-  `onFormatTypeName(formattedName, rawName, schemaType)`.
-- Both type **declarations** and **`$ref` resolution** go through this same formatter
-  with the raw schema key. So one override keyed on the raw name fixes the declaration
-  **and every reference** to it, consistently.
-
-Config file (`swagger-typescript-api.config.js`, ESM `export default`):
-
-```js
-// Disambiguate schema names that collide after PascalCase normalization.
-// Keyed on the RAW schema name: the override applies to the declaration AND
-// every $ref that resolves to it (the generator caches type names by raw name).
-const RENAME = {
-  SignatureRequest_email_notification: "SignatureRequestEmailNotificationResponse",
-  SignatureRequest_email_notification_sender: "SignatureRequestEmailNotificationResponseSender",
-};
-
-export default {
-  hooks: {
-    onFormatTypeName: (formattedName, rawName /*, schemaType */) => {
-      // Returning undefined keeps the generator's default name.
-      return RENAME[rawName];
-    },
-  },
-};
-```
-
-The **read / response** side is renamed (write side keeps the clean name, since it is
-what consumers construct for Create/Update and is referenced more widely). Result:
-
-- `SignatureRequestEmailNotification` / `SignatureRequestEmailNotificationSender` — write
-  model (unchanged names).
-- `SignatureRequestEmailNotificationResponse` /
-  `SignatureRequestEmailNotificationResponseSender` — read model.
-
-**Why not pre-process the spec?** An earlier idea renamed schema keys + rewrote `$ref`s
-in a copy of `swagger-v3.json` before generation. The hook is strictly better: the
-pristine spec is never touched, there is no `$ref`-rewriting or temp-spec file, and it
-uses the tool's supported extension point.
-
-**Proof of concept** (run against the real `swagger-v3.json`): all four types emitted
-exactly once and distinct; `$ref`s wired correctly (`CreateSignatureRequest` /
-`UpdateSignatureRequest` → base type, `SignatureRequest` → `...Response` type); zero
-duplicate top-level names in the file; `tsc --strict --noEmit` exits 0 with zero TS2300.
+**Rejected alternative:** staying on old `13.2.8` and adding a `hooks.onFormatTypeName`
+custom-config file to rename one side of each collision. This works (proven end-to-end on
+13.2.8) but keeps the package on a two-year-old generator and adds a bespoke hook to
+maintain for every future collision. Pinning to 13.12.5 leans on the upstream fix
+instead. **Trade-off accepted:** adopting 13.12.5 pulls in the newer generator's
+codegen/formatting wholesale (an ~830-line diff vs the committed file, only part of which
+is the collision fix; the rest is formatting + modest spec staleness sync).
 
 ### 2. Ship compiled `dist/*.js` + `*.d.ts`
 
-Even though the disambiguation makes the source valid TypeScript, shipping compiled
-output is the belt-and-suspenders layer: a consumer's bundler reads `dist/api.js` (types
-already stripped) and consumes `dist/api.d.ts` as trusted declarations, so no downstream
-parser ever touches the `.ts` source.
+Even though pinning makes the source valid TypeScript, shipping compiled output is the
+belt-and-suspenders layer: a consumer's bundler reads `dist/api.js` (types already
+stripped) and consumes `dist/api.d.ts` as trusted declarations, so no downstream parser
+ever touches the `.ts` source.
 
-- Add `typescript` as a devDependency.
+- Add `typescript` (`^5`) as a devDependency.
 - Add `tsconfig.build.json`: `target: ES2020`, `module: CommonJS`, `declaration: true`,
-  `outDir: dist`, `rootDir: src`, `strict: true`, `skipLibCheck: true`, includes
-  `src/api.ts`.
+  `outDir: dist`, `rootDir: src`, `strict: true`, `skipLibCheck: true`,
+  `esModuleInterop: true`, includes `src/api.ts`.
 - `package.json`:
   - `main` → `dist/api.js`
   - `types` → `dist/api.d.ts`
-  - add `files: ["dist"]` (only the compiled output is published)
-  - scripts:
-    - `generate`: `swagger-typescript-api generate -p ./swagger-v3.json -o ./src -n api.ts --custom-config ./swagger-typescript-api.config.js`
-    - `build`: `tsc -p tsconfig.build.json`
-    - `verify`: `node scripts/verify-api.mjs`
-    - `prepublishOnly`: `yarn build`
-- **Module format:** CommonJS only (universally importable, including by bundlers). ESM
-  can be added later if a consumer needs tree-shaking; out of scope now (YAGNI).
-- `src/api.ts` remains committed (the generated source of truth). `dist/` is gitignored
-  and built in CI (not committed).
+  - `files: ["dist"]` (only compiled output is published)
+  - scripts: `generate`, `build` (`tsc -p tsconfig.build.json`), `verify`
+    (`node scripts/verify-api.mjs`), `prepublishOnly` (`pnpm run build`)
+- **Module format:** CommonJS only (universally importable, incl. by bundlers). ESM out
+  of scope now (YAGNI).
+- `src/api.ts` stays committed (generated source of truth). `dist/` is gitignored and
+  built in CI (not committed). Verified: `dist/api.js` `require()`s cleanly and emits
+  runtime enum exports (e.g. `FontFamily`, `WatchlistStatus`).
 
-### 3. CI publish workflow
+### 3. Toolchain: standardize on pnpm 11
 
-`.github/workflows/npm-publish.yml` currently publishes with no build step and no
-`files` field (it ships raw `src/api.ts`). Update the publish job to:
+The repo is inconsistent: a Yarn v1-format `yarn.lock` under a `packageManager:
+yarn@3.6.0` (Berry/PnP) declaration, plus a clean npm v3 `package-lock.json`, while CI
+uses `npm publish`. Standardize on **pnpm 11**:
+
+- Set `packageManager: "pnpm@11.13.1"` in `package.json`.
+- Remove `yarn.lock` **and** `package-lock.json`.
+- Generate `pnpm-lock.yaml` via `pnpm install` and commit it.
+- pnpm uses a real (symlinked) `node_modules`, so the generate CLI and `tsc` behave
+  exactly as verified in the proof-of-concept. Verified end-to-end under pnpm 11.13.1:
+  `pnpm install` → `pnpm run generate` → `pnpm run build` all succeed.
+
+### 4. CI publish workflow
+
+`.github/workflows/npm-publish.yml` currently publishes with no build step and no `files`
+field (it ships raw `src/api.ts`). Update the publish job to:
 
 1. `actions/checkout`
-2. `actions/setup-node` (Node 18, `registry-url: https://registry.npmjs.org/`)
-3. `corepack enable` (repo declares `packageManager: yarn@3.6.0`)
-4. `yarn install --immutable`
-5. `yarn verify`
-6. `yarn build`
+2. `actions/setup-node` (Node 22 LTS, `registry-url: https://registry.npmjs.org/`)
+3. `corepack enable` (activates the pinned `pnpm@11.13.1`)
+4. `pnpm install --frozen-lockfile`
+5. `pnpm run verify`
+6. `pnpm run build`
 7. `npm publish --access public`
 
-`prepublishOnly: "yarn build"` is the safety net so a manual publish cannot ship a stale
-or empty `dist/`.
+Node is bumped from 18 to 22 (Node 18 is EOL; pnpm 11 requires Node ≥18.12).
+`prepublishOnly: "pnpm run build"` is the safety net so a manual publish cannot ship a
+stale/empty `dist/`.
 
-**Package-manager cleanup:** the repo has both `yarn.lock` and `package-lock.json` while
-`packageManager` declares `yarn@3.6.0`. Remove `package-lock.json` so the CI install step
-is unambiguous (yarn is authoritative).
-
-### 4. Verification & future-collision guard
+### 5. Verification & future-collision guard
 
 No test framework exists. The real gate is `tsc` itself — it throws TS2300 on duplicate
-identifiers, so a clean `yarn build` proves the collision is gone. Layered on top:
-
-`scripts/verify-api.mjs` (run as `yarn verify`, before build in CI) asserts against the
-generated `src/api.ts`:
+identifiers, so a clean `pnpm run build` proves the collision is gone. Layered on top,
+`scripts/verify-api.mjs` (run as `pnpm run verify`, before build in CI) asserts against
+the generated `src/api.ts`:
 
 1. **No duplicate declarations:** no top-level exported identifier (`export type` /
    `export interface` / `export enum`) appears more than once anywhere in the file.
-2. **Expected names exist:** all four of `SignatureRequestEmailNotification`,
+2. **Expected names exist exactly once:** `SignatureRequestEmailNotification`,
    `SignatureRequestEmailNotificationSender`,
    `SignatureRequestEmailNotificationResponse`,
-   `SignatureRequestEmailNotificationResponseSender` are declared exactly once.
-3. **Correct `$ref` wiring / shape differences:**
-   - `SignatureRequest` response uses `...Response` (required `custom_note`, no
-     `custom_text`).
-   - `CreateSignatureRequest` / `UpdateSignatureRequest` use the base type (has
-     `custom_text`, deprecated optional `custom_note`).
+   `SignatureRequestEmailNotificationResponseSender`.
+3. **Correct `$ref` wiring / shape differences:** `SignatureRequest` response uses
+   `...Response` (required `custom_note`, no `custom_text`); `CreateSignatureRequest` /
+   `UpdateSignatureRequest` use the base type (has `custom_text`, deprecated optional
+   `custom_note`).
 
-This script is the **fail-loud guard for future spec updates**: a new Yousign spec that
-introduces a fresh collision without a corresponding `RENAME` entry would produce a
-duplicate identifier, which `verify` (and `tsc` in `build`) would reject rather than
-silently regenerating a broken file.
+This is the fail-loud guard for future spec/generator changes: any regression that
+reintroduces a duplicate (or drops an expected type) fails `verify` and `build` rather
+than silently shipping a broken file.
+
+### 6. Version bump & changelog
+
+Adopting 13.12.5 changes the published type surface (the collision fix plus the newer
+generator's naming/formatting and modest spec staleness sync). Before release:
+
+- Produce a summary of added / removed / renamed **exported symbol names** between the
+  old committed `src/api.ts` and the regenerated one (diff of `export (type|interface|
+  enum|const)` identifiers + route method names).
+- Bump `version` in `package.json` accordingly (recommend a **major** bump — currently
+  `1.2.0` → `2.0.0` — if any existing exported type is renamed/removed; otherwise a minor
+  bump). Record the notable changes in `README.md` (or a `CHANGELOG`). Final version
+  number is the maintainer's call, informed by the symbol diff.
 
 ## Components summary
 
 | File | Change |
 |---|---|
-| `swagger-typescript-api.config.js` | **new** — `onFormatTypeName` rename map |
-| `scripts/verify-api.mjs` | **new** — duplicate / wiring assertions |
+| `package.json` | pin `swagger-typescript-api@13.12.5`, add `typescript`, `packageManager: pnpm@11.13.1`, `main`/`types`→`dist`, `files`, scripts, version bump |
+| `src/api.ts` | regenerated with pinned 13.12.5 (no duplicates) |
+| `scripts/verify-api.mjs` | **new** — duplicate / name / wiring assertions |
 | `tsconfig.build.json` | **new** — CJS + declarations → `dist/` |
-| `src/api.ts` | regenerated with disambiguated names |
-| `package.json` | `main`/`types`→`dist`, `files`, scripts, `typescript` devDep |
 | `.gitignore` | add `dist/` |
-| `.github/workflows/npm-publish.yml` | install → verify → build → publish |
+| `pnpm-lock.yaml` | **new** — pnpm lockfile |
+| `yarn.lock` | **removed** |
 | `package-lock.json` | **removed** |
+| `.github/workflows/npm-publish.yml` | corepack + pnpm; install → verify → build → publish; Node 22 |
+| `README.md` | changelog note for the version bump |
 
 ## Out of scope
 
 - ESM (`.mjs`) dist output — CommonJS only for now.
-- Changing the HTTP client type or any generated API surface beyond the four renamed
-  types.
-- Broader spec-normalization tooling — only the two known collisions are handled; new
-  collisions are surfaced (fail-loud) rather than auto-resolved.
+- Any custom `swagger-typescript-api` config / codegen customization — the pinned modern
+  generator's default output is used as-is.
+- Manual editing of `swagger-v3.json` — it stays pristine.
 
 ## Success criteria
 
-1. `yarn generate` produces a `src/api.ts` with the four distinct types and correct
-   `$ref` wiring.
-2. `yarn verify` passes (no duplicate identifiers; expected names & shapes present).
-3. `yarn build` compiles clean (zero TS2300, zero errors) and emits `dist/api.js` +
+1. `pnpm install` (frozen) succeeds from the committed `pnpm-lock.yaml`.
+2. `pnpm run generate` reproducibly reproduces the committed `src/api.ts` (byte-stable
+   given the pinned generator) with the four distinct types and correct `$ref` wiring.
+3. `pnpm run verify` passes (no duplicate identifiers; expected names & shapes present).
+4. `pnpm run build` compiles clean (zero TS2300, zero errors) and emits `dist/api.js` +
    `dist/api.d.ts`.
-4. A published package exposes `dist/api.js` (`main`) and `dist/api.d.ts` (`types`); no
+5. A published package exposes `dist/api.js` (`main`) and `dist/api.d.ts` (`types`); no
    consumer needs a local patch.
