@@ -143,8 +143,8 @@ the generated `src/api.ts`:
    `export interface` / `export enum`) appears more than once anywhere in the file.
 2. **Expected names exist exactly once:** `SignatureRequestEmailNotification`,
    `SignatureRequestEmailNotificationSender`,
-   `SignatureRequestEmailNotificationResponse`,
-   `SignatureRequestEmailNotificationResponseSender`.
+   `SignatureRequestEmailNotification1`,
+   `SignatureRequestEmailNotificationSender1`.
 3. **Correct `$ref` wiring / shape differences:** `SignatureRequest` response uses
    `SignatureRequestEmailNotification1` (required `custom_note`, no `custom_text`);
    `CreateSignatureRequest` / `UpdateSignatureRequest` use the base type (has
