@@ -28,22 +28,25 @@ if (dups.length)
   );
 
 // 2. The four disambiguated email-notification types must each exist exactly once.
+//    The read-model variants carry the generator's native numeric suffix ("1"):
+//    swagger-typescript-api 13.12.5 disambiguates the colliding schema names by
+//    appending "1" to the second occurrence (the SignatureRequest response side).
 const expected = [
   "SignatureRequestEmailNotification",
   "SignatureRequestEmailNotificationSender",
-  "SignatureRequestEmailNotificationResponse",
-  "SignatureRequestEmailNotificationResponseSender",
+  "SignatureRequestEmailNotification1",
+  "SignatureRequestEmailNotificationSender1",
 ];
 for (const name of expected) {
   const c = counts.get(name) || 0;
   if (c !== 1) errors.push(`Expected '${name}' declared exactly once, found ${c}`);
 }
 
-// 3. $ref wiring: write model uses the base type, read model uses the Response type.
+// 3. $ref wiring: write model uses the base type, read model uses the "1" variant.
 if (!/email_notification\?: SignatureRequestEmailNotification;/.test(src))
   errors.push("Write wiring missing: email_notification?: SignatureRequestEmailNotification;");
-if (!/email_notification: SignatureRequestEmailNotificationResponse;/.test(src))
-  errors.push("Read wiring missing: email_notification: SignatureRequestEmailNotificationResponse;");
+if (!/email_notification: SignatureRequestEmailNotification1;/.test(src))
+  errors.push("Read wiring missing: email_notification: SignatureRequestEmailNotification1;");
 
 // Extract the `{ ... }` body of a named type/interface, brace-balanced.
 function extractBody(text, name) {
@@ -61,11 +64,12 @@ function extractBody(text, name) {
 }
 
 // 3a. Read model: required custom_note, no custom_text.
-const resp = extractBody(src, "SignatureRequestEmailNotificationResponse");
+const resp = extractBody(src, "SignatureRequestEmailNotification1");
 if (resp !== null) {
   if (!/custom_note: string \| null;/.test(resp))
-    errors.push("Response type should have required `custom_note: string | null;`");
-  if (/custom_text/.test(resp)) errors.push("Response type must NOT contain custom_text");
+    errors.push("Read type (SignatureRequestEmailNotification1) should have required `custom_note: string | null;`");
+  if (/custom_text/.test(resp))
+    errors.push("Read type (SignatureRequestEmailNotification1) must NOT contain custom_text");
 }
 // 3b. Write model: has custom_text.
 const base = extractBody(src, "SignatureRequestEmailNotification");
