@@ -237,7 +237,7 @@ Standardizes on pnpm 11; removes stale yarn.lock and package-lock.json."
 
 ### Task 3: Compile to CommonJS `dist`
 
-Add a TypeScript build that emits `dist/api.js` + `dist/api.d.ts`, and repoint the package entry points at `dist`. `tsc` compiling clean is the definitive TS2300 gate.
+Add a TypeScript build that emits `dist/api.js` + `dist/api.d.ts`, and repoint the package entry points at `dist`. Note: because `src/api.ts` carries `// @ts-nocheck`, `tsc` does NOT catch TS2300 duplicates — the `verify` guard is the real gate, so it is chained ahead of `tsc` in the `build` script.
 
 **Files:**
 - Create: `tsconfig.build.json`
@@ -291,7 +291,7 @@ Append to `.gitignore` (which currently contains only `node_modules`):
 dist
 ```
 
-- [ ] **Step 4: Build — verify tsc compiles clean (the TS2300 gate)**
+- [ ] **Step 4: Build — verify guard passes, then tsc compiles clean**
 
 Run: `corepack pnpm run build`
 Expected: exit code 0, no output (no errors). This proves zero TS2300 duplicate-identifier errors.
@@ -458,4 +458,4 @@ git commit -m "release: 2.0.0 — reproducible generation, dist output, dedup ty
 
 **Type/name consistency:** `verify` = `node scripts/verify-api.mjs` and `build` = `tsc -p tsconfig.build.json` are referenced identically in Tasks 1, 3, 4, 5. The four type names are spelled identically throughout. The generate command matches the Global Constraints. ✓
 
-**Note on expected numbers:** `~12,693 lines` and the specific FAIL/PASS output in Tasks 1–2 were captured by running the exact commands against the real spec with pinned 13.12.5 during design. Minor line-count drift is acceptable; the guard (`pnpm run verify`) and `tsc` are the authoritative gates, not the line count.
+**Note on expected numbers:** `~12,693 lines` and the specific FAIL/PASS output in Tasks 1–2 were captured by running the exact commands against the real spec with pinned 13.12.5 during design. Minor line-count drift is acceptable; the guard (`pnpm run verify`) is the authoritative gate for duplicate identifiers (`tsc` is blinded by the file's `@ts-nocheck` header), not the line count.

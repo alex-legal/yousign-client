@@ -134,10 +134,14 @@ stale/empty `dist/`.
 
 ### 5. Verification & future-collision guard
 
-No test framework exists. The real gate is `tsc` itself — it throws TS2300 on duplicate
-identifiers, so a clean `pnpm run build` proves the collision is gone. Layered on top,
-`scripts/verify-api.mjs` (run as `pnpm run verify`, before build in CI) asserts against
-the generated `src/api.ts`:
+No test framework exists. **The real gate is `scripts/verify-api.mjs`, not `tsc`.** The
+generated `src/api.ts` carries a `// @ts-nocheck` header (a swagger-typescript-api
+default), which suppresses semantic checks — so `tsc` does **not** fail on TS2300
+duplicate identifiers and will silently emit duplicates into `dist/api.d.ts`. Only the
+regex-based guard reliably catches duplicates. It is therefore chained into every path
+that produces `dist` (`build` and `prepare` both run `node scripts/verify-api.mjs && tsc
+…`), so no build/publish/git-install path can emit a duplicated `dist`. Run as `pnpm run
+verify`, it asserts against the generated `src/api.ts`:
 
 1. **No duplicate declarations:** no top-level exported identifier (`export type` /
    `export interface` / `export enum`) appears more than once anywhere in the file.
