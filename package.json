@@ -1,6 +1,6 @@
 {
   "name": "@alexlegal/yousign",
-  "packageManager": "yarn@3.6.0",
+  "packageManager": "pnpm@11.13.1",
   "main": "src/api.ts",
   "types": "src/api.ts",
   "scripts": {
@@ -8,7 +8,8 @@
     "verify": "node scripts/verify-api.mjs"
   },
   "devDependencies": {
-    "swagger-typescript-api": "^13.2.8"
+    "swagger-typescript-api": "13.12.5",
+    "typescript": "^5.6.0"
   },
   "description": "Yousign client",
   "version": "1.2.0",
