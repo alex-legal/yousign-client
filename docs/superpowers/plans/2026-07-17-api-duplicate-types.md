@@ -66,22 +66,23 @@ if (dups.length)
   );
 
 // 2. The four disambiguated email-notification types must each exist exactly once.
+//    The read-model variants carry the generator's native numeric suffix ("1").
 const expected = [
   "SignatureRequestEmailNotification",
   "SignatureRequestEmailNotificationSender",
-  "SignatureRequestEmailNotificationResponse",
-  "SignatureRequestEmailNotificationResponseSender",
+  "SignatureRequestEmailNotification1",
+  "SignatureRequestEmailNotificationSender1",
 ];
 for (const name of expected) {
   const c = counts.get(name) || 0;
   if (c !== 1) errors.push(`Expected '${name}' declared exactly once, found ${c}`);
 }
 
-// 3. $ref wiring: write model uses the base type, read model uses the Response type.
+// 3. $ref wiring: write model uses the base type, read model uses the "1" variant.
 if (!/email_notification\?: SignatureRequestEmailNotification;/.test(src))
   errors.push("Write wiring missing: email_notification?: SignatureRequestEmailNotification;");
-if (!/email_notification: SignatureRequestEmailNotificationResponse;/.test(src))
-  errors.push("Read wiring missing: email_notification: SignatureRequestEmailNotificationResponse;");
+if (!/email_notification: SignatureRequestEmailNotification1;/.test(src))
+  errors.push("Read wiring missing: email_notification: SignatureRequestEmailNotification1;");
 
 // Extract the `{ ... }` body of a named type/interface, brace-balanced.
 function extractBody(text, name) {
@@ -99,11 +100,12 @@ function extractBody(text, name) {
 }
 
 // 3a. Read model: required custom_note, no custom_text.
-const resp = extractBody(src, "SignatureRequestEmailNotificationResponse");
+const resp = extractBody(src, "SignatureRequestEmailNotification1");
 if (resp !== null) {
   if (!/custom_note: string \| null;/.test(resp))
-    errors.push("Response type should have required `custom_note: string | null;`");
-  if (/custom_text/.test(resp)) errors.push("Response type must NOT contain custom_text");
+    errors.push("Read type (SignatureRequestEmailNotification1) should have required `custom_note: string | null;`");
+  if (/custom_text/.test(resp))
+    errors.push("Read type (SignatureRequestEmailNotification1) must NOT contain custom_text");
 }
 // 3b. Write model: has custom_text.
 const base = extractBody(src, "SignatureRequestEmailNotification");
@@ -135,7 +137,7 @@ verify-api: FAIL
   - Duplicate top-level declarations (TS2300 risk): SignatureRequestEmailNotification (2x), SignatureRequestEmailNotificationSender (2x)
   - Expected 'SignatureRequestEmailNotification' declared exactly once, found 2
   ...
-  - Read wiring missing: email_notification: SignatureRequestEmailNotificationResponse;
+  - Read wiring missing: email_notification: SignatureRequestEmailNotification1;
 ```
 This failure confirms the guard detects the real defect.
 
@@ -403,7 +405,7 @@ Expected: a list of `<` (removed) and `>` (added) exported symbol names. Lines r
 
 - [ ] **Step 2: Bump the version**
 
-In `package.json`, change `"version": "1.2.0"`. Recommended: `"version": "2.0.0"` — the generator upgrade renames/removes existing exported types (e.g. the old single `SignatureRequestEmailNotification` response interface is now `SignatureRequestEmailNotificationResponse`), which is a breaking change for type consumers. If Step 1 shows only additions (no removals/renames), a minor bump (`1.3.0`) is acceptable instead. Final choice is the maintainer's.
+In `package.json`, change `"version": "1.2.0"`. Recommended: `"version": "2.0.0"` — the generator upgrade renames/removes existing exported types (e.g. the old single `SignatureRequestEmailNotification` response interface is now `SignatureRequestEmailNotification1`), which is a breaking change for type consumers. If Step 1 shows only additions (no removals/renames), a minor bump (`1.3.0`) is acceptable instead. Final choice is the maintainer's.
 
 - [ ] **Step 3: Add a changelog note to README.md**
 
@@ -416,9 +418,9 @@ Append a section to `README.md`:
   reproducible.
 - Fixed duplicate `SignatureRequestEmailNotification` / `...Sender` type
   declarations (TS2300). The `SignatureRequest` response now uses
-  `SignatureRequestEmailNotificationResponse` / `...ResponseSender`; the
-  create/update request bodies continue to use
-  `SignatureRequestEmailNotification` / `...Sender`.
+  `SignatureRequestEmailNotification1` / `...Sender1` (the generator's native
+  numeric-suffix disambiguation); the create/update request bodies continue to
+  use `SignatureRequestEmailNotification` / `...Sender`.
 - The package now ships compiled `dist/api.js` + `dist/api.d.ts` (CommonJS)
   instead of raw TypeScript source.
 ```

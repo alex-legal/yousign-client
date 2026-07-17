@@ -39,10 +39,18 @@ Two facts found during investigation:
    types and produces **zero duplicate identifiers** in the whole file:
    - `SignatureRequestEmailNotification` / `SignatureRequestEmailNotificationSender`
      (write) ← referenced by `CreateSignatureRequest` / `UpdateSignatureRequest`.
-   - `SignatureRequestEmailNotificationResponse` /
-     `SignatureRequestEmailNotificationResponseSender` (read) ← referenced by the
-     `SignatureRequest` response. (`Response` is the generator's own built-in
-     disambiguation suffix.)
+   - `SignatureRequestEmailNotification1` /
+     `SignatureRequestEmailNotificationSender1` (read) ← referenced by the
+     `SignatureRequest` response. The generator disambiguates the second occurrence by
+     appending a numeric suffix (`1`).
+
+   **Note (naming):** the generator's native disambiguation uses the numeric `1` suffix,
+   not a semantic `Response` suffix. A ~6-line custom config
+   (`hooks.onFormatTypeName`) can rename the read side to
+   `SignatureRequestEmailNotificationResponse` / `...ResponseSender`, and was proven to
+   work. The maintainer chose to **accept the generator's native `...1` names and ship no
+   custom config**, keeping the toolchain configuration-free at the cost of less
+   descriptive read-model type names.
 
 The committed `src/api.ts` (~12.4k lines, compact formatting) was produced by some
 mid-range 13.x that is compact **but predates the collision fix**, so it still contains
@@ -138,9 +146,9 @@ the generated `src/api.ts`:
    `SignatureRequestEmailNotificationResponse`,
    `SignatureRequestEmailNotificationResponseSender`.
 3. **Correct `$ref` wiring / shape differences:** `SignatureRequest` response uses
-   `...Response` (required `custom_note`, no `custom_text`); `CreateSignatureRequest` /
-   `UpdateSignatureRequest` use the base type (has `custom_text`, deprecated optional
-   `custom_note`).
+   `SignatureRequestEmailNotification1` (required `custom_note`, no `custom_text`);
+   `CreateSignatureRequest` / `UpdateSignatureRequest` use the base type (has
+   `custom_text`, deprecated optional `custom_note`).
 
 This is the fail-loud guard for future spec/generator changes: any regression that
 reintroduces a duplicate (or drops an expected type) fails `verify` and `build` rather
