@@ -110,6 +110,46 @@ export enum SignerDeliveryMode {
 }
 
 /**
+ * offset_unit
+ * Unit of time used to offset the signature date. When `null`, the field will display the exact signature date.
+ * @default "days"
+ * @example "months"
+ */
+export enum CreateFieldOffsetUnit {
+  Days = "days",
+  Weeks = "weeks",
+  Months = "months",
+  Years = "years",
+}
+
+/**
+ * time_format
+ * Format used to display the time. Can be null to display only the date, or a format like `HH:mm` or `hh:mm a`
+ * @example "HH:mm"
+ */
+export enum CreateFieldTimeFormat {
+  HHMm = "HH:mm",
+  HhMmA = "hh:mm a",
+}
+
+/**
+ * date_format
+ * Format used to display the date (e.g., `dd/MM/yyyy`, `MM/dd/yyyy`)
+ * @default "dd/MM/yyyy"
+ * @example "dd/MM/yyyy"
+ */
+export enum CreateFieldDateFormat {
+  DdMMYyyy = "dd/MM/yyyy",
+  DdMMYyyy1 = "dd-MM-yyyy",
+  DdMMYyyy2 = "dd.MM.yyyy",
+  YyyyMMDd = "yyyy-MM-dd",
+  MMDdYyyy = "MM/dd/yyyy",
+  DdMMMMYyyy = "dd MMMM yyyy",
+  MMMMDdYyyy = "MMMM dd, yyyy",
+  MMMDdYyyy = "MMM dd, yyyy",
+}
+
+/**
  * Archiving
  * Once the signature request completed, archive its documents in a secure digital safe
  * @deprecated
@@ -1379,7 +1419,7 @@ export interface SignatureRequest {
    */
   workspace_id?: string;
   audit_trail_locale: AuditTrailLocale;
-  email_notification: SignatureRequestEmailNotification;
+  email_notification: SignatureRequestEmailNotification1;
   /**
    * @format uuid
    * @example "9a93d3b5-fb3b-4abf-9e70-26315b33506c"
@@ -2113,9 +2153,85 @@ export interface FieldReadOnlyText {
   font: Font;
 }
 
+/** SignatureDate */
+export interface FieldSignatureDate {
+  /**
+   * @format uuid
+   * @example "94de855c-21c5-4bde-b82c-745ce415b084"
+   */
+  id: string;
+  /**
+   * @format uuid
+   * @example "3218d951-3096-4145-8639-0054757ec223"
+   */
+  document_id: string;
+  /**
+   * @format uuid
+   * @example "72cbe6fd-9225-460e-901c-94acf7a066bb"
+   */
+  signer_id: string;
+  type: "signature_date";
+  /**
+   * The height must be calculated using the formula: "height = number_of_lines \* font_size \* line_height", where the line height is always set to 1.5.
+   * @format int32
+   * @min 1
+   */
+  height: number;
+  /**
+   * @format int32
+   * @min 24
+   */
+  width: number;
+  /**
+   * @format int32
+   * @min 1
+   */
+  page: number;
+  /**
+   * @format int32
+   * @min 0
+   * @max 32767
+   */
+  x: number;
+  /**
+   * @format int32
+   * @min 0
+   * @max 32767
+   */
+  y: number;
+  value: string | null;
+  font: Font;
+  /**
+   * Name of the Field.
+   * @minLength 1
+   * @maxLength 128
+   * @example "Date 1"
+   */
+  name?: string | null;
+  /** Format used to display the date (e.g., `dd/MM/yyyy`, `MM/dd/yyyy`) */
+  date_format?: CreateFieldDateFormat;
+  /** Format used to display the time. Can be null to display only the date, or a format like `HH:mm` or `hh:mm a` */
+  time_format?: CreateFieldTimeFormat;
+  /**
+   * Boolean indicating whether to display the timezone abbreviation (e.g., `CEST`) next to the time.
+   * @default false
+   */
+  show_timezone?: boolean | null;
+  /** Unit of time used to offset the signature date. When `null`, the field will display the exact signature date. */
+  offset_unit?: CreateFieldOffsetUnit;
+  /**
+   * Number of units to add to the signature date. Ignored if `offset_unit` is `null`. For example, use `offset_unit`: `"month"` and `offset_value: 3` to display "signature date + 3 months"
+   * @min 0
+   * @default 0
+   * @example 30
+   */
+  offset_value?: number | null;
+}
+
 export type CreateField =
   | Signature
   | Mention
+  | SignatureDate
   | Text
   | Checkbox
   | RadioGroup
@@ -2124,6 +2240,7 @@ export type CreateField =
 export type UpdateField =
   | Signature1
   | Mention1
+  | SignatureDate1
   | Text1
   | Checkbox1
   | RadioGroup1
@@ -2735,6 +2852,12 @@ export interface BankAccountLookupMeta {
    * @example ["BALV_1101"]
    */
   status_codes: string[];
+  /**
+   * Indicates if the Bank Account Lookup Verification data has been anonymized.
+   * If set to `true`, all fields in the `data` field are set to NULL.
+   * @example false
+   */
+  data_anonymized: boolean;
 }
 
 /** Initiate a new Bank Account Lookup Verification with natural person */
@@ -2775,6 +2898,89 @@ export interface InitiateBankAccountLookupWithLegalPerson {
    * @example "9412b83b-b4b9-4a94-97b5-2b43dfa4cde3"
    */
   workspace_id?: string | null;
+}
+
+/** Initiate a new Bank Account Lookup Verification with natural person */
+export interface InitiateBankAccountLookupWithNaturalPersonFromFile {
+  /**
+   * The file containing the IBAN number.
+   * Accepted formats: PDF.
+   * Max size: 30 MB.
+   * @format binary
+   * @example "Binary file"
+   */
+  file: File;
+  /** Information about the natural person who owns the bank account */
+  natural_person: InitiateBankAccountLookupWithNaturalPersonNaturalPerson;
+  /**
+   * Scopes the verification to a specific workspace.
+   * Defaults to the default workspace if not specified.
+   * @format uuid
+   * @example "9412b83b-b4b9-4a94-97b5-2b43dfa4cde3"
+   */
+  workspace_id?: string | null;
+}
+
+/** Initiate a new Bank Account Lookup Verification with legal person */
+export interface InitiateBankAccountLookupWithLegalPersonFromFile {
+  /**
+   * The file containing the IBAN number.
+   * Accepted formats: PDF.
+   * Max size: 30 MB.
+   * @format binary
+   * @example "Binary file"
+   */
+  file: File;
+  /** Information about the legal person (company) that owns the bank account */
+  legal_person: InitiateBankAccountLookupWithLegalPersonLegalPerson;
+  /**
+   * Scopes the verification to a specific workspace.
+   * Defaults to the default workspace if not specified.
+   * @format uuid
+   * @example "9412b83b-b4b9-4a94-97b5-2b43dfa4cde3"
+   */
+  workspace_id?: string | null;
+}
+
+/** BankAccountLookupMeta */
+export interface BankAccountLookupFull {
+  /** The unique identifier for a resource. */
+  id: UUID;
+  /**
+   * The Workspace ID in which the verification has been created.
+   * @format uuid
+   * @example "9a93d3b5-fb3b-4abf-9e70-26315b33506c"
+   */
+  workspace_id: string;
+  /**
+   * Creation date of the Bank Account Lookup Verification.
+   * @format date-time
+   * @example "2025-07-23T18:22:00Z"
+   */
+  created_at: string;
+  /**
+   * Update date of the Bank Account Lookup Verification.
+   * @format date-time
+   * @example "2025-07-23T18:22:00Z"
+   */
+  updated_at: string;
+  /**
+   * Status of the Bank Account Lookup Verification.
+   * @example "verified"
+   */
+  status: "pending" | "verified" | "failed" | "inconclusive";
+  /**
+   * List of status codes. Indicates the cause when the status is `failed` or `inconclusive`.
+   * @example ["BALV_1101"]
+   */
+  status_codes: string[];
+  /**
+   * Indicates if the Bank Account Lookup Verification data has been anonymized.
+   * If set to `true`, all fields in the `data` field are set to NULL.
+   * @example false
+   */
+  data_anonymized: boolean;
+  data: BankAccountLookupFullData;
 }
 
 /** BankAccountMeta */
@@ -3700,7 +3906,7 @@ export type SignatureRequestEmailNotification = {
    */
   custom_note?: string | null;
   custom_text?: SignatureRequestEmailNotificationCustomText;
-};
+} | null;
 
 /**
  * From Scratch
@@ -4012,7 +4218,7 @@ export type IdentityVideoDocument = {
    * @example "US"
    */
   issuing_country_code: string | null;
-};
+} | null;
 
 /**
  * All Events
@@ -4110,6 +4316,54 @@ export interface OtpMessage {
    * @minLength 1
    */
   custom_text: string | null;
+}
+
+/** BadRequestResponse */
+export interface BadRequestResponse {
+  type: string;
+  detail: string;
+}
+
+/** UnauthorizedResponse */
+export interface UnauthorizedResponse {
+  type: string;
+  detail: string;
+}
+
+/** ForbiddenResponse */
+export interface ForbiddenResponse {
+  type: string;
+  detail: string;
+}
+
+/** NotFoundResponse */
+export interface NotFoundResponse {
+  type: string;
+  detail: string;
+}
+
+/** MethodNotAllowed */
+export interface MethodNotAllowed {
+  message: string;
+}
+
+/** UnsupportedMediaTypeResponse */
+export interface UnsupportedMediaTypeResponse {
+  type: string;
+  detail: string;
+}
+
+/** TooManyRequestsResponse */
+export interface TooManyRequestsResponse {
+  message: string;
+}
+
+/** InternalServerError */
+export interface InternalServerError {
+  /** @example "about:blank" */
+  type: string;
+  /** @example "Something wrong occurred." */
+  detail: string;
 }
 
 export type GetBankAccountVerifications200ResponseDataInner =
@@ -4346,13 +4600,13 @@ export interface GetSignatureRequestsSignatureRequestIdSignerDocumentRequests200
 }
 
 export type GetSignatureRequestsSignatureRequestIdDocumentsDocumentIdFields200ResponseDataInner =
-
-    | FieldSignature
-    | FieldText
-    | FieldMention
-    | FieldCheckbox
-    | FieldRadioButtonGroup
-    | FieldReadOnlyText;
+  | FieldSignature
+  | FieldText
+  | FieldMention
+  | FieldCheckbox
+  | FieldRadioButtonGroup
+  | FieldReadOnlyText
+  | FieldSignatureDate;
 
 export interface GetSignatureRequestsSignatureRequestIdDocumentsDocumentIdFields200Response {
   /** Cursor based pagination */
@@ -4441,6 +4695,10 @@ export interface GetVerificationsBankAccountLookups200Response {
 export type PostVerificationsBankAccountLookupsRequest =
   | InitiateBankAccountLookupWithNaturalPerson
   | InitiateBankAccountLookupWithLegalPerson;
+
+export type PostVerificationsBankAccountLookupsRequest1 =
+  | InitiateBankAccountLookupWithNaturalPersonFromFile
+  | InitiateBankAccountLookupWithLegalPersonFromFile;
 
 export interface GetVerificationsBankAccounts200Response {
   /** Cursor based pagination */
@@ -4570,7 +4828,7 @@ export type CreateCustomExperienceRedirectUrls = {
    * @example "https://example.com/decline"
    */
   decline?: string | null;
-};
+} | null;
 
 export type UpdateCustomExperienceRedirectUrls = {
   /**
@@ -4594,7 +4852,7 @@ export type UpdateCustomExperienceRedirectUrls = {
    * @example "https://example.com/decline"
    */
   decline: string | null;
-};
+} | null;
 
 export interface DocumentInitialsPerPageInner {
   /**
@@ -4722,13 +4980,13 @@ export type CreateSignatureRequestTemplatePlaceholders = {
   read_only_text_fields?: SignatureRequestPlaceholderReadOnlyTextFieldSubstituteInput[];
 } | null;
 
-export interface SignatureRequestEmailNotificationSender {
+export interface SignatureRequestEmailNotificationSender1 {
   type: "organization" | "workspace" | "user" | "custom";
   custom_name: string | null;
 }
 
-export interface SignatureRequestEmailNotification {
-  sender: SignatureRequestEmailNotificationSender;
+export interface SignatureRequestEmailNotification1 {
+  sender: SignatureRequestEmailNotificationSender1;
   /**
    * @maxLength 2000
    * @example "Please sign these documents as soon as possible."
@@ -5040,6 +5298,60 @@ export interface Mention {
    * @example "Mention 1"
    */
   name?: string | null;
+}
+
+/** SignatureDate */
+export interface SignatureDate {
+  /**
+   * @format uuid
+   * @example "b9142070-7039-4c19-ae30-67ac3e72ee7e"
+   */
+  signer_id: string;
+  type: "signature_date";
+  /**
+   * @min 1
+   * @example 1
+   */
+  page: number;
+  /**
+   * @min 0
+   * @max 32767
+   * @example 200
+   */
+  x: number;
+  /**
+   * @min 0
+   * @max 32767
+   * @example 400
+   */
+  y: number;
+  /** If set, **width** and **height** properties become required. Otherwise, if not set or null, the default font will be used. */
+  font?: CreateFieldFont;
+  /**
+   * Name of the Field.
+   * @minLength 1
+   * @maxLength 128
+   * @example "Date 1"
+   */
+  name?: string | null;
+  /** Format used to display the date (e.g., `dd/MM/yyyy`, `MM/dd/yyyy`) */
+  date_format?: CreateFieldDateFormat;
+  /** Format used to display the time. Can be null to display only the date, or a format like `HH:mm` or `hh:mm a` */
+  time_format?: CreateFieldTimeFormat;
+  /**
+   * Boolean indicating whether to display the timezone abbreviation (e.g., `CEST`) next to the time.
+   * @default false
+   */
+  show_timezone?: boolean | null;
+  /** Unit of time used to offset the signature date. When `null`, the field will display the exact signature date. */
+  offset_unit?: CreateFieldOffsetUnit;
+  /**
+   * Number of units to add to the signature date. Ignored if `offset_unit` is `null`. For example, use `offset_unit`: `"month"` and `offset_value: 3` to display "signature date + 3 months"
+   * @min 0
+   * @default 0
+   * @example 30
+   */
+  offset_value?: number | null;
 }
 
 /** Text */
@@ -5369,6 +5681,59 @@ export interface Mention1 {
    * @example "Text 1"
    */
   name?: string | null;
+}
+
+/** SignatureDate */
+export interface SignatureDate1 {
+  /**
+   * @format uuid
+   * @example "9b6ed2f3-244f-487a-baa1-bbe4f51c8748"
+   */
+  signer_id?: string;
+  /**
+   * @min 1
+   * @example 1
+   */
+  page?: number;
+  /**
+   * @min 0
+   * @max 32767
+   * @example 400
+   */
+  x?: number;
+  /**
+   * @min 0
+   * @max 32767
+   * @example 400
+   */
+  y?: number;
+  /** If set, **width** and **height** properties become required. Otherwise, if not set the font will not be changed, and if set to null the default font will be used. */
+  font?: UpdateFieldFont;
+  /**
+   * Name of the Field.
+   * @minLength 1
+   * @maxLength 128
+   * @example "Date 1"
+   */
+  name?: string | null;
+  /** Format used to display the date (e.g., `dd/MM/yyyy`, `MM/dd/yyyy`) */
+  date_format?: CreateFieldDateFormat;
+  /** Format used to display the time. Can be null to display only the date, or a format like `HH:mm` or `hh:mm a` */
+  time_format?: CreateFieldTimeFormat;
+  /**
+   * Boolean indicating whether to display the timezone abbreviation (e.g., `CEST`) next to the time.
+   * @default false
+   */
+  show_timezone?: boolean | null;
+  /** Unit of time used to offset the signature date. When `null`, the field will display the exact signature date. */
+  offset_unit?: CreateFieldOffsetUnit;
+  /**
+   * Number of units to add to the signature date. Ignored if `offset_unit` is `null`. For example, use `offset_unit`: `"month"` and `offset_value: 3` to display "signature date + 3 months"
+   * @min 0
+   * @default 0
+   * @example 30
+   */
+  offset_value?: number | null;
 }
 
 /** Text */
@@ -5866,7 +6231,7 @@ export type UpdateSignerInfo = {
   phone_number?: string | null;
   /** Locale settings used for communication. */
   locale?: Locale;
-};
+} | null;
 
 /** Signer's IP address */
 export type SignerSIPAddress = string;
@@ -5945,6 +6310,18 @@ export interface InitiateBankAccountLookupWithLegalPersonLegalPerson {
    * @example "794513986"
    */
   company_number: string;
+}
+
+export type BankAccountLookupFullDataExtractedFromDocument = {
+  /**
+   * The IBAN number extracted from the document.
+   * @example "FR7630006000011234567890189"
+   */
+  iban?: string | null;
+} | null;
+
+export interface BankAccountLookupFullData {
+  extracted_from_document: BankAccountLookupFullDataExtractedFromDocument;
 }
 
 /** The field can not be submitted if field "natural_person" is provided. */
@@ -6288,7 +6665,7 @@ export type InitiateProofOfAddressNaturalPersonAddress = {
    * @example "CAEN"
    */
   city: string;
-};
+} | null;
 
 export interface InitiateProofOfAddressNaturalPerson {
   /**
@@ -6651,7 +7028,7 @@ export type SignatureRequestEmailNotificationCustomText = {
    * @maxLength 2000
    */
   reminder_body?: string | null;
-};
+} | null;
 
 /** Create new signer */
 export interface SignatureRequestPlaceholderSignerSubstituteFromInfoInputInfo {
@@ -6966,54 +7343,6 @@ export interface OTPMessage {
   custom_text: string;
 }
 
-/** BadRequestResponse */
-export interface BadRequestResponse {
-  type: string;
-  detail: string;
-}
-
-/** UnauthorizedResponse */
-export interface UnauthorizedResponse {
-  type: string;
-  detail: string;
-}
-
-/** ForbiddenResponse */
-export interface ForbiddenResponse {
-  type: string;
-  detail: string;
-}
-
-/** NotFoundResponse */
-export interface NotFoundResponse {
-  type: string;
-  detail: string;
-}
-
-/** MethodNotAllowed */
-export interface MethodNotAllowed {
-  message: string;
-}
-
-/** UnsupportedMediaTypeResponse */
-export interface UnsupportedMediaTypeResponse {
-  type: string;
-  detail: string;
-}
-
-/** TooManyRequestsResponse */
-export interface TooManyRequestsResponse {
-  message: string;
-}
-
-/** InternalServerError */
-export interface InternalServerError {
-  /** @example "about:blank" */
-  type: string;
-  /** @example "Something wrong occurred." */
-  detail: string;
-}
-
 export type QueryParamsType = Record<string | number, any>;
 export type ResponseFormat = keyof Omit<Body, "body" | "bodyUsed">;
 
@@ -7045,7 +7374,7 @@ export interface ApiConfig<SecurityDataType = unknown> {
   baseUrl?: string;
   baseApiParams?: Omit<RequestParams, "baseUrl" | "cancelToken" | "signal">;
   securityWorker?: (
-    securityData: SecurityDataType | null
+    securityData: SecurityDataType | null,
   ) => Promise<RequestParams | void> | RequestParams | void;
   customFetch?: typeof fetch;
 }
@@ -7091,9 +7420,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
   protected encodeQueryParam(key: string, value: any) {
     const encodedKey = encodeURIComponent(key);
-    return `${encodedKey}=${encodeURIComponent(
-      typeof value === "number" ? value : `${value}`
-    )}`;
+    return `${encodedKey}=${encodeURIComponent(typeof value === "number" ? value : `${value}`)}`;
   }
 
   protected addQueryParam(query: QueryParamsType, key: string) {
@@ -7108,13 +7435,13 @@ export class HttpClient<SecurityDataType = unknown> {
   protected toQueryString(rawQuery?: QueryParamsType): string {
     const query = rawQuery || {};
     const keys = Object.keys(query).filter(
-      (key) => "undefined" !== typeof query[key]
+      (key) => "undefined" !== typeof query[key],
     );
     return keys
       .map((key) =>
         Array.isArray(query[key])
           ? this.addArrayQueryParam(query, key)
-          : this.addQueryParam(query, key)
+          : this.addQueryParam(query, key),
       )
       .join("&");
   }
@@ -7149,8 +7476,8 @@ export class HttpClient<SecurityDataType = unknown> {
           property instanceof Blob
             ? property
             : typeof property === "object" && property !== null
-            ? JSON.stringify(property)
-            : `${property}`
+              ? JSON.stringify(property)
+              : `${property}`,
         );
         return formData;
       }, new FormData());
@@ -7160,7 +7487,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
   protected mergeRequestParams(
     params1: RequestParams,
-    params2?: RequestParams
+    params2?: RequestParams,
   ): RequestParams {
     return {
       ...this.baseApiParams,
@@ -7175,7 +7502,7 @@ export class HttpClient<SecurityDataType = unknown> {
   }
 
   protected createAbortSignal = (
-    cancelToken: CancelToken
+    cancelToken: CancelToken,
   ): AbortSignal | undefined => {
     if (this.abortControllers.has(cancelToken)) {
       const abortController = this.abortControllers.get(cancelToken);
@@ -7221,9 +7548,7 @@ export class HttpClient<SecurityDataType = unknown> {
     const responseFormat = format || requestParams.format;
 
     return this.customFetch(
-      `${baseUrl || this.baseUrl || ""}${path}${
-        queryString ? `?${queryString}` : ""
-      }`,
+      `${baseUrl || this.baseUrl || ""}${path}${queryString ? `?${queryString}` : ""}`,
       {
         ...requestParams,
         headers: {
@@ -7240,15 +7565,16 @@ export class HttpClient<SecurityDataType = unknown> {
           typeof body === "undefined" || body === null
             ? null
             : payloadFormatter(body),
-      }
+      },
     ).then(async (response) => {
-      const r = response.clone() as HttpResponse<T, E>;
+      const r = response as HttpResponse<T, E>;
       r.data = null as unknown as T;
       r.error = null as unknown as E;
 
+      const responseToParse = responseFormat ? response.clone() : response;
       const data = !responseFormat
         ? r
-        : await response[responseFormat]()
+        : await responseToParse[responseFormat]()
             .then((data) => {
               if (r.ok) {
                 r.data = data;
@@ -7282,7 +7608,7 @@ export class HttpClient<SecurityDataType = unknown> {
  * Build the best experience of digital signature through your own platform. Increase your conversion rates, leverage your data and reduce your costs with Yousign API.
  */
 export class Api<
-  SecurityDataType extends unknown
+  SecurityDataType extends unknown,
 > extends HttpClient<SecurityDataType> {
   archives = {
     /**
@@ -7326,10 +7652,10 @@ export class Api<
      */
     getArchivesArchivedFileIdDownload: (
       archivedFileId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
-        File,
+        Blob,
         | BadRequestResponse
         | UnauthorizedResponse
         | ForbiddenResponse
@@ -7372,7 +7698,7 @@ export class Api<
         /** Filter by status */
         status?: "pending" | "approved" | "declined" | "inconclusive";
       },
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         GetBankAccountVerifications200Response,
@@ -7403,7 +7729,7 @@ export class Api<
      */
     postBankAccountVerifications: (
       data: LegacyCreateBankAccountVerification,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         LegacyBankAccountVerificationCreated,
@@ -7436,7 +7762,7 @@ export class Api<
      */
     getBankAccountVerificationsBankAccountVerificationId: (
       bankAccountVerificationId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         GetBankAccountVerificationsBankAccountVerificationId200Response,
@@ -7475,7 +7801,7 @@ export class Api<
         /** The API authentication key to use to retrieve the data */
         authentication_key?: UUID;
       },
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         Consumption,
@@ -7517,7 +7843,7 @@ export class Api<
           | "archiving"
         )[];
       },
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         GetConsumptionAddon200Response,
@@ -7572,7 +7898,7 @@ export class Api<
         /** A list of Workspace IDs to filter the results. */
         workspace_ids?: UUID[];
       },
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         GetConsumptionDetail200Response,
@@ -7609,7 +7935,7 @@ export class Api<
         /** The API authentication key to use to retrieve the data */
         authentication_key?: UUID;
       },
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         UUID,
@@ -7653,7 +7979,7 @@ export class Api<
          */
         limit?: number;
       },
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         GetContacts200Response,
@@ -7712,7 +8038,7 @@ export class Api<
      */
     deleteContactsContactId: (contactId: UUID, params: RequestParams = {}) =>
       this.request<
-        any,
+        void,
         | UnauthorizedResponse
         | ForbiddenResponse
         | NotFoundResponse
@@ -7763,7 +8089,7 @@ export class Api<
     patchContactsContactId: (
       contactId: UUID,
       data: UpdateContact,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         Contact,
@@ -7810,7 +8136,7 @@ export class Api<
          */
         limit?: number;
       },
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         GetCustomExperiences200Response,
@@ -7840,7 +8166,7 @@ export class Api<
      */
     postCustomExperience: (
       data: CreateCustomExperience,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         CustomExperience,
@@ -7872,10 +8198,10 @@ export class Api<
      */
     deleteCustomExperience: (
       customExperienceId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
-        any,
+        void,
         | BadRequestResponse
         | UnauthorizedResponse
         | ForbiddenResponse
@@ -7901,7 +8227,7 @@ export class Api<
      */
     getCustomExperiencesCustomExperienceId: (
       customExperienceId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         CustomExperience,
@@ -7932,7 +8258,7 @@ export class Api<
     patchCustomExperiencesCustomExperienceId: (
       customExperienceId: UUID,
       data: UpdateCustomExperience,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         CustomExperience,
@@ -7965,10 +8291,10 @@ export class Api<
      */
     deleteCustomExperienceLogo: (
       customExperienceId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
-        any,
+        void,
         | BadRequestResponse
         | UnauthorizedResponse
         | ForbiddenResponse
@@ -7995,7 +8321,7 @@ export class Api<
     patchCustomExperienceLogo: (
       customExperienceId: UUID,
       data: PatchCustomExperienceLogoRequest,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         CustomExperience,
@@ -8029,7 +8355,7 @@ export class Api<
      */
     postDocuments: (
       data: CreateDocumentFromMultipart,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         Document,
@@ -8062,7 +8388,7 @@ export class Api<
      */
     uploadElectronicSealDocument: (
       data: CreateElectronicSealDocument,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         ElectronicSealDocument,
@@ -8095,10 +8421,10 @@ export class Api<
      */
     downloadElectronicSealDocument: (
       electronicSealDocumentId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
-        File,
+        Blob,
         | UnauthorizedResponse
         | NotFoundResponse
         | MethodNotAllowed
@@ -8136,7 +8462,7 @@ export class Api<
          */
         limit?: number;
       },
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         ListElectronicSealImages200Response,
@@ -8166,7 +8492,7 @@ export class Api<
      */
     uploadElectronicSealImage: (
       data: UploadElectronicSealImage,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         ElectronicSealImage,
@@ -8198,10 +8524,10 @@ export class Api<
      */
     deleteElectronicSealImage: (
       electronicSealImageId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
-        any,
+        void,
         | UnauthorizedResponse
         | ForbiddenResponse
         | NotFoundResponse
@@ -8226,10 +8552,10 @@ export class Api<
      */
     downloadElectronicSealImage: (
       electronicSealImageId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
-        File,
+        Blob,
         | UnauthorizedResponse
         | NotFoundResponse
         | MethodNotAllowed
@@ -8255,7 +8581,7 @@ export class Api<
      */
     postElectronicSeals: (
       data: CreateElectronicSealPayload,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         ElectronicSeal,
@@ -8312,7 +8638,7 @@ export class Api<
      */
     getElectronicSealAuditTrail: (
       electronicSealId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         ElectronicSealAuditTrail,
@@ -8342,10 +8668,10 @@ export class Api<
      */
     downloadElectronicSealAuditTrail: (
       electronicSealId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
-        File,
+        Blob,
         | BadRequestResponse
         | UnauthorizedResponse
         | ForbiddenResponse
@@ -8388,7 +8714,7 @@ export class Api<
         /** Filter by status */
         status?: "pending" | "approved" | "declined" | "inconclusive";
       },
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         GetIdDocumentVerifications200Response,
@@ -8419,7 +8745,7 @@ export class Api<
      */
     createIdDocumentVerification: (
       data: CreateIdDocumentVerificationRequest,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         LegacyIdDocumentVerificationCreated,
@@ -8452,7 +8778,7 @@ export class Api<
      */
     getIdDocumentVerification: (
       idDocumentVerificationId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         GetIdDocumentVerification200Response,
@@ -8501,7 +8827,7 @@ export class Api<
          */
         name?: object;
       },
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         GetLabels200Response,
@@ -8558,7 +8884,7 @@ export class Api<
      */
     deleteLabelsId: (labelId: UUID, params: RequestParams = {}) =>
       this.request<
-        any,
+        void,
         | BadRequestResponse
         | UnauthorizedResponse
         | ForbiddenResponse
@@ -8612,7 +8938,7 @@ export class Api<
     patchLabelId: (
       labelId: UUID,
       data: UpdateLabel,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         Label,
@@ -8691,7 +9017,7 @@ export class Api<
          */
         "label.name"?: object;
       },
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         GetSignatureRequests200Response,
@@ -8721,7 +9047,7 @@ export class Api<
      */
     postSignatureRequests: (
       data: CreateSignatureRequest,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         SignatureRequest,
@@ -8761,10 +9087,10 @@ export class Api<
          */
         permanent_delete?: boolean;
       },
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
-        any,
+        void,
         | BadRequestResponse
         | UnauthorizedResponse
         | ForbiddenResponse
@@ -8791,7 +9117,7 @@ export class Api<
      */
     getSignatureRequestsSignatureRequestId: (
       signatureRequestId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         SignatureRequest,
@@ -8822,7 +9148,7 @@ export class Api<
     patchSignatureRequestsSignatureRequestId: (
       signatureRequestId: UUID,
       data: UpdateSignatureRequest,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         SignatureRequest,
@@ -8856,7 +9182,7 @@ export class Api<
     postSignatureRequestsSignatureRequestIdActivate: (
       signatureRequestId: UUID,
       data: ActivateSignatureRequest,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         SignatureRequestActivated,
@@ -8889,7 +9215,7 @@ export class Api<
     postSignatureRequestsSignatureRequestIdApprovers: (
       signatureRequestId: UUID,
       data: CreateApprover,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         Approver,
@@ -8923,10 +9249,10 @@ export class Api<
     deleteSignatureRequestsSignatureRequestIdApproversApproverId: (
       signatureRequestId: UUID,
       approverId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
-        any,
+        void,
         | BadRequestResponse
         | UnauthorizedResponse
         | ForbiddenResponse
@@ -8953,7 +9279,7 @@ export class Api<
     getSignatureRequestsSignatureRequestIdApproversApproverId: (
       signatureRequestId: UUID,
       approverId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         Approver,
@@ -8984,7 +9310,7 @@ export class Api<
       signatureRequestId: UUID,
       approverId: UUID,
       data: UpdateApprover,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         Approver,
@@ -9018,7 +9344,7 @@ export class Api<
     postSignatureRequestsSignatureRequestIdApproversApproverIdSendReminder: (
       signatureRequestId: UUID,
       approverId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         void,
@@ -9054,7 +9380,7 @@ export class Api<
          */
         merge?: boolean;
       },
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         File,
@@ -9084,7 +9410,7 @@ export class Api<
     postSignatureRequestsSignatureRequestIdCancel: (
       signatureRequestId: UUID,
       data: PostSignatureRequestsSignatureRequestIdCancelRequest,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         SignatureRequest,
@@ -9117,7 +9443,7 @@ export class Api<
      */
     getSignatureRequestsSignatureRequestIdSignerConsentRequests: (
       signatureRequestId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         GetSignatureRequestsSignatureRequestIdSignerConsentRequests200Response,
@@ -9147,7 +9473,7 @@ export class Api<
     postSignatureRequestsSignatureRequestIdConsentRequests: (
       signatureRequestId: UUID,
       data: CreateSignerConsentRequest,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         SignerConsentRequest,
@@ -9181,10 +9507,10 @@ export class Api<
     deleteSignatureRequestsSignatureRequestIdConsentRequestsConsentRequestId: (
       signatureRequestId: UUID,
       consentRequestId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
-        any,
+        void,
         | BadRequestResponse
         | UnauthorizedResponse
         | ForbiddenResponse
@@ -9212,7 +9538,7 @@ export class Api<
       signatureRequestId: UUID,
       consentRequestId: UUID,
       data: UpdateSignerConsentRequest,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         SignerConsentRequest,
@@ -9247,10 +9573,10 @@ export class Api<
         signatureRequestId: UUID,
         consentRequestId: UUID,
         signerId: UUID,
-        params: RequestParams = {}
+        params: RequestParams = {},
       ) =>
         this.request<
-          any,
+          void,
           | BadRequestResponse
           | UnauthorizedResponse
           | ForbiddenResponse
@@ -9279,7 +9605,7 @@ export class Api<
         signatureRequestId: UUID,
         consentRequestId: UUID,
         signerId: UUID,
-        params: RequestParams = {}
+        params: RequestParams = {},
       ) =>
         this.request<
           void,
@@ -9308,7 +9634,7 @@ export class Api<
      */
     getSignatureRequestsSignatureRequestIdSignerDocumentRequests: (
       signatureRequestId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         GetSignatureRequestsSignatureRequestIdSignerDocumentRequests200Response,
@@ -9338,7 +9664,7 @@ export class Api<
     postSignatureRequestsSignatureRequestIdDocumentRequests: (
       signatureRequestId: UUID,
       data: CreateSignerDocumentRequest,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         SignerDocumentRequest,
@@ -9373,10 +9699,10 @@ export class Api<
       (
         signatureRequestId: UUID,
         documentRequestId: UUID,
-        params: RequestParams = {}
+        params: RequestParams = {},
       ) =>
         this.request<
-          any,
+          void,
           | BadRequestResponse
           | UnauthorizedResponse
           | ForbiddenResponse
@@ -9405,10 +9731,10 @@ export class Api<
         signatureRequestId: UUID,
         documentRequestId: UUID,
         signerId: UUID,
-        params: RequestParams = {}
+        params: RequestParams = {},
       ) =>
         this.request<
-          any,
+          void,
           | BadRequestResponse
           | UnauthorizedResponse
           | ForbiddenResponse
@@ -9437,7 +9763,7 @@ export class Api<
         signatureRequestId: UUID,
         documentRequestId: UUID,
         signerId: UUID,
-        params: RequestParams = {}
+        params: RequestParams = {},
       ) =>
         this.request<
           SignerDocumentRequest,
@@ -9474,7 +9800,7 @@ export class Api<
          */
         nature?: object;
       },
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         Document[],
@@ -9506,7 +9832,7 @@ export class Api<
     postSignatureRequestsSignatureRequestIdDocuments: (
       signatureRequestId: UUID,
       data: CreateDocumentFromMultipart,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         Document,
@@ -9545,7 +9871,7 @@ export class Api<
         /** Force zip archive download */
         archive?: boolean;
       },
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         File,
@@ -9575,10 +9901,10 @@ export class Api<
     deleteSignatureRequestsSignatureRequestIdDocumentsDocumentId: (
       signatureRequestId: UUID,
       documentId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
-        any,
+        void,
         | BadRequestResponse
         | UnauthorizedResponse
         | ForbiddenResponse
@@ -9605,7 +9931,7 @@ export class Api<
     getSignatureRequestsSignatureRequestIdDocumentsDocumentId: (
       signatureRequestId: UUID,
       documentId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         Document,
@@ -9636,7 +9962,7 @@ export class Api<
       signatureRequestId: UUID,
       documentId: UUID,
       data: UpdateDocument,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         Document,
@@ -9670,10 +9996,10 @@ export class Api<
     getSignatureRequestsSignatureRequestIdDocumentsDocumentsIdDownload: (
       signatureRequestId: UUID,
       documentId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
-        File,
+        Blob,
         | BadRequestResponse
         | UnauthorizedResponse
         | ForbiddenResponse
@@ -9729,7 +10055,7 @@ export class Api<
          */
         name?: object;
       },
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         GetSignatureRequestsSignatureRequestIdDocumentsDocumentIdFields200Response,
@@ -9762,7 +10088,7 @@ export class Api<
       signatureRequestId: UUID,
       documentId: UUID,
       data: CreateField,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         GetSignatureRequestsSignatureRequestIdDocumentsDocumentIdFields200ResponseDataInner,
@@ -9797,10 +10123,10 @@ export class Api<
       signatureRequestId: UUID,
       documentId: UUID,
       fieldId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
-        any,
+        void,
         | BadRequestResponse
         | UnauthorizedResponse
         | ForbiddenResponse
@@ -9829,7 +10155,7 @@ export class Api<
       documentId: UUID,
       fieldId: UUID,
       data: UpdateField,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         GetSignatureRequestsSignatureRequestIdDocumentsDocumentIdFields200ResponseDataInner,
@@ -9865,10 +10191,10 @@ export class Api<
       documentId: UUID,
       fieldId: UUID,
       data: FieldAnswer,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
-        any,
+        void,
         | BadRequestResponse
         | UnauthorizedResponse
         | ForbiddenResponse
@@ -9898,7 +10224,7 @@ export class Api<
       signatureRequestId: UUID,
       documentId: UUID,
       data: PostSignatureRequestsSignatureRequestIdDocumentsDocumentIdReplaceRequest,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         Document,
@@ -9931,7 +10257,7 @@ export class Api<
      */
     getSignatureRequestsSignatureRequestIdFollowers: (
       signatureRequestId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         GetSignatureRequestsSignatureRequestIdFollowers200Response,
@@ -9961,7 +10287,7 @@ export class Api<
     postSignatureRequestsSignatureRequestIdFollowers: (
       signatureRequestId: UUID,
       data: CreateFollowers,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         Follower[],
@@ -9994,7 +10320,7 @@ export class Api<
      */
     getSignatureRequestsIdLabels: (
       signatureRequestId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         GetSignatureRequestsIdLabels200Response,
@@ -10024,10 +10350,10 @@ export class Api<
     deleteSignatureRequestsIdLabelsId: (
       signatureRequestId: UUID,
       labelId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
-        any,
+        void,
         | BadRequestResponse
         | UnauthorizedResponse
         | ForbiddenResponse
@@ -10054,10 +10380,10 @@ export class Api<
     putSignatureRequestsIdLabelsId: (
       signatureRequestId: UUID,
       labelId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
-        any,
+        void,
         | BadRequestResponse
         | UnauthorizedResponse
         | ForbiddenResponse
@@ -10083,10 +10409,10 @@ export class Api<
      */
     deleteSignatureRequestsSignatureRequestIdMetadata: (
       signatureRequestId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
-        any,
+        void,
         | UnauthorizedResponse
         | ForbiddenResponse
         | NotFoundResponse
@@ -10111,7 +10437,7 @@ export class Api<
      */
     getSignatureRequestsSignatureRequestIdMetadata: (
       signatureRequestId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         Metadata,
@@ -10141,7 +10467,7 @@ export class Api<
     postSignatureRequestsSignatureRequestIdMetadata: (
       signatureRequestId: UUID,
       data: Metadata,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         Metadata,
@@ -10175,7 +10501,7 @@ export class Api<
     putSignatureRequestsSignatureRequestIdMetadata: (
       signatureRequestId: UUID,
       data: Metadata,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         Metadata,
@@ -10208,7 +10534,7 @@ export class Api<
     postSignatureRequestsSignatureRequestIdReactivate: (
       signatureRequestId: UUID,
       data: PostSignatureRequestsSignatureRequestIdReactivateRequest,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         SignatureRequest,
@@ -10241,7 +10567,7 @@ export class Api<
      */
     getSignatureRequestsSignatureRequestIdSigners: (
       signatureRequestId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         Signer[],
@@ -10271,7 +10597,7 @@ export class Api<
     postSignatureRequestsSignatureRequestIdSigners: (
       signatureRequestId: UUID,
       data: CreateSigner,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         Signer,
@@ -10305,10 +10631,10 @@ export class Api<
     deleteSignatureRequestsSignatureRequestIdSignersSignerId: (
       signatureRequestId: UUID,
       signerId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
-        any,
+        void,
         | BadRequestResponse
         | UnauthorizedResponse
         | ForbiddenResponse
@@ -10335,7 +10661,7 @@ export class Api<
     getSignersSignersId: (
       signatureRequestId: UUID,
       signerId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         Signer,
@@ -10366,7 +10692,7 @@ export class Api<
       signatureRequestId: UUID,
       signerId: UUID,
       data: UpdateSigner,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         Signer,
@@ -10400,7 +10726,7 @@ export class Api<
     getSignatureRequestsSignatureRequestIdSignersSignerIdAuditTrails: (
       signatureRequestId: UUID,
       signerId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         SignerAuditTrail,
@@ -10431,10 +10757,10 @@ export class Api<
     getSignersSignerIdAuditTrailsDownload: (
       signatureRequestId: UUID,
       signerId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
-        File,
+        Blob,
         | BadRequestResponse
         | UnauthorizedResponse
         | ForbiddenResponse
@@ -10461,10 +10787,10 @@ export class Api<
     deleteSignatureRequestsSignatureRequestIdSignersSignerIdDocuments: (
       signatureRequestId: UUID,
       signerId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
-        any,
+        void,
         | BadRequestResponse
         | UnauthorizedResponse
         | ForbiddenResponse
@@ -10491,7 +10817,7 @@ export class Api<
     getSignatureRequestsSignatureRequestIdSignersSignerIdDocuments: (
       signatureRequestId: UUID,
       signerId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         GetSignatureRequestsSignatureRequestIdSignersSignerIdDocuments200Response,
@@ -10524,10 +10850,10 @@ export class Api<
         signatureRequestId: UUID,
         signerId: UUID,
         signerDocumentId: UUID,
-        params: RequestParams = {}
+        params: RequestParams = {},
       ) =>
         this.request<
-          File,
+          Blob,
           | BadRequestResponse
           | UnauthorizedResponse
           | ForbiddenResponse
@@ -10555,10 +10881,10 @@ export class Api<
       signatureRequestId: UUID,
       signerId: UUID,
       data: SignerIdentityVerification,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
-        any,
+        void,
         | BadRequestResponse
         | UnauthorizedResponse
         | ForbiddenResponse
@@ -10588,10 +10914,10 @@ export class Api<
     postSignatureRequestsSignatureRequestIdSignersSignerIdSendOtp: (
       signatureRequestId: UUID,
       signerId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
-        any,
+        void,
         | BadRequestResponse
         | UnauthorizedResponse
         | ForbiddenResponse
@@ -10618,7 +10944,7 @@ export class Api<
     postSignatureRequestsSignatureRequestIdSignersSignerIdSendReminder: (
       signatureRequestId: UUID,
       signerId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         void,
@@ -10649,10 +10975,10 @@ export class Api<
       signatureRequestId: UUID,
       signerId: UUID,
       data: SignerSign,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
-        any,
+        void,
         | BadRequestResponse
         | UnauthorizedResponse
         | ForbiddenResponse
@@ -10682,10 +11008,10 @@ export class Api<
     postSignatureRequestsIdSignersIdUnblockIdentification: (
       signatureRequestId: UUID,
       signerId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
-        any,
+        void,
         | BadRequestResponse
         | UnauthorizedResponse
         | ForbiddenResponse
@@ -10725,7 +11051,7 @@ export class Api<
          */
         limit?: number;
       },
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         GetTemplates200Response,
@@ -10774,7 +11100,7 @@ export class Api<
          */
         email?: object;
       },
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         GetUsers200Response,
@@ -10849,7 +11175,7 @@ export class Api<
          */
         email?: object;
       },
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         GetInvitations200Response,
@@ -10879,7 +11205,7 @@ export class Api<
      */
     getUsersInvitationInvitationId: (
       invitationId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         UserInvitation,
@@ -10908,7 +11234,7 @@ export class Api<
      */
     deleteUsersUserId: (userId: UUID, params: RequestParams = {}) =>
       this.request<
-        any,
+        void,
         | BadRequestResponse
         | UnauthorizedResponse
         | ForbiddenResponse
@@ -10962,7 +11288,7 @@ export class Api<
     patchUsersUserId: (
       userId: UUID,
       data: UpdateUser,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         User,
@@ -11045,7 +11371,7 @@ export class Api<
          */
         workspace_id?: object;
       },
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         GetVerificationsBankAccountConnections200Response,
@@ -11075,7 +11401,7 @@ export class Api<
      */
     postVerificationsBankAccountConnections: (
       data: PostVerificationsBankAccountConnectionsRequest,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         BankAccountConnectionFull,
@@ -11107,7 +11433,7 @@ export class Api<
      */
     getVerificationsBankAccountConnectionsId: (
       verificationId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         BankAccountConnectionFull,
@@ -11160,7 +11486,7 @@ export class Api<
          */
         workspace_id?: object;
       },
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         GetVerificationsBankAccountLookups200Response,
@@ -11190,10 +11516,10 @@ export class Api<
      */
     postVerificationsBankAccountLookups: (
       data: PostVerificationsBankAccountLookupsRequest,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
-        BankAccountLookupMeta,
+        BankAccountLookupFull,
         | BadRequestResponse
         | UnauthorizedResponse
         | ForbiddenResponse
@@ -11222,10 +11548,10 @@ export class Api<
      */
     getVerificationsBankAccountLookupsId: (
       bankAccountLookupVerificationId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
-        BankAccountLookupMeta,
+        BankAccountLookupFull,
         | BadRequestResponse
         | UnauthorizedResponse
         | ForbiddenResponse
@@ -11275,7 +11601,7 @@ export class Api<
          */
         workspace_id?: object;
       },
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         GetVerificationsBankAccounts200Response,
@@ -11305,7 +11631,7 @@ export class Api<
      */
     postVerificationsBankAccounts: (
       data: PostVerificationsBankAccountsRequest,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         BankAccountFull,
@@ -11337,7 +11663,7 @@ export class Api<
      */
     getVerificationsBankAccountsId: (
       bankAccountVerificationId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         BankAccountFull,
@@ -11390,7 +11716,7 @@ export class Api<
          */
         workspace_id?: object;
       },
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         GetVerificationsCompanies200Response,
@@ -11420,7 +11746,7 @@ export class Api<
      */
     postVerificationsCompanies: (
       data: InitiateCompanyFromJson,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         CompanyFull,
@@ -11452,7 +11778,7 @@ export class Api<
      */
     getVerificationsCompaniesId: (
       companyVerificationId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         CompanyFull,
@@ -11505,7 +11831,7 @@ export class Api<
          */
         workspace_id?: object;
       },
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         GetVerificationsIdentityDocuments200Response,
@@ -11535,7 +11861,7 @@ export class Api<
      */
     postVerificationsIdentityDocuments: (
       data: PostVerificationsIdentityDocumentsRequest,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         IdentityDocumentFull,
@@ -11567,7 +11893,7 @@ export class Api<
      */
     getVerificationsIdentityDocumentsId: (
       identityDocumentVerificationId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         IdentityDocumentFull,
@@ -11620,7 +11946,7 @@ export class Api<
          */
         workspace_id?: object;
       },
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         GetVerificationsIdentityVideos200Response,
@@ -11650,7 +11976,7 @@ export class Api<
      */
     postVerificationsIdentityVideos: (
       data: InitiateIdentityVideo,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         IdentityVideoFull,
@@ -11682,7 +12008,7 @@ export class Api<
      */
     getVerificationsIdentityVideosId: (
       identityVideoVerificationId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         IdentityVideoFull,
@@ -11735,7 +12061,7 @@ export class Api<
          */
         workspace_id?: object;
       },
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         GetVerificationsProofsOfAddress200Response,
@@ -11765,7 +12091,7 @@ export class Api<
      */
     postVerificationsProofsOfAddress: (
       data: InitiateProofOfAddress,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         ProofOfAddressFull,
@@ -11797,7 +12123,7 @@ export class Api<
      */
     getVerificationsProofsOfAddressId: (
       proofOfAddressVerificationId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         ProofOfAddressFull,
@@ -11850,7 +12176,7 @@ export class Api<
          */
         workspace_id?: object;
       },
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         GetVerificationsWatchlists200Response,
@@ -11880,7 +12206,7 @@ export class Api<
      */
     postVerificationsWatchlists: (
       data: InitiateWatchlist,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         WatchlistFull,
@@ -11912,7 +12238,7 @@ export class Api<
      */
     getVerificationsWatchlistsId: (
       watchlistVerificationId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         WatchlistFull,
@@ -11969,7 +12295,7 @@ export class Api<
      */
     postWebhooksSubscriptions: (
       data: CreateWebhookSubscription,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         WebhookSubscription,
@@ -12002,7 +12328,7 @@ export class Api<
      */
     deleteWebhooksWebhookId: (webhookId: UUID, params: RequestParams = {}) =>
       this.request<
-        any,
+        void,
         | BadRequestResponse
         | UnauthorizedResponse
         | ForbiddenResponse
@@ -12057,7 +12383,7 @@ export class Api<
     patchWebhooksWebhookId: (
       webhookId: UUID,
       data: UpdateWebhookSubscription,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         WebhookSubscription,
@@ -12103,7 +12429,7 @@ export class Api<
          */
         limit?: number;
       },
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         GetWorkspaces200Response,
@@ -12190,10 +12516,10 @@ export class Api<
      */
     markWorkspaceAsDefault: (
       data: MarkWorkspaceAsDefault,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
-        any,
+        void,
         | BadRequestResponse
         | UnauthorizedResponse
         | ForbiddenResponse
@@ -12222,10 +12548,10 @@ export class Api<
     deleteWorkspace: (
       workspaceId: UUID,
       data: DeleteWorkspace,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
-        any,
+        void,
         | BadRequestResponse
         | UnauthorizedResponse
         | ForbiddenResponse
@@ -12282,7 +12608,7 @@ export class Api<
     patchWorkspacesWorkspaceId: (
       workspaceId: UUID,
       data: UpdateWorkspace,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
         Workspace,
@@ -12316,10 +12642,10 @@ export class Api<
     deleteWorkspaceWorkspaceIdUsersUserId: (
       workspaceId: UUID,
       userId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
-        any,
+        void,
         | BadRequestResponse
         | UnauthorizedResponse
         | ForbiddenResponse
@@ -12346,10 +12672,10 @@ export class Api<
     putWorkspacesWorkspaceIdUsers: (
       workspaceId: UUID,
       userId: UUID,
-      params: RequestParams = {}
+      params: RequestParams = {},
     ) =>
       this.request<
-        any,
+        void,
         | BadRequestResponse
         | UnauthorizedResponse
         | ForbiddenResponse
