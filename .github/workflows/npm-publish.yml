@@ -1,4 +1,7 @@
-# Publishes @alexlegal/yousign to npm on push to main.
+# Publishes @alexlegal/yousign to npm on push to main using npm Trusted
+# Publishing (OIDC) — no long-lived NPM_TOKEN secret. Requires a Trusted
+# Publisher to be configured for the package on npmjs.com pointing at this
+# repo and the workflow filename `npm-publish.yml`.
 name: Node.js Package
 
 on:
@@ -9,12 +12,18 @@ on:
 jobs:
   publish-npm:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # required: lets npm mint an OIDC token for Trusted Publishing (and provenance)
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org/
+      # Trusted Publishing needs npm >= 11.5.1; Node 22 bundles npm 10.
+      - name: Upgrade npm for Trusted Publishing
+        run: npm install -g npm@^11.5.1
       - name: Enable corepack (pnpm)
         run: corepack enable
       - name: Install dependencies
@@ -23,13 +32,8 @@ jobs:
         run: pnpm run verify
       - name: Build dist
         run: pnpm run build
-      # Diagnostic: fail early with a clear auth error instead of npm's cryptic
-      # E404 if the NPM_TOKEN secret is expired/revoked or lacks publish rights.
-      - name: Check npm auth
-        run: npm whoami --registry https://registry.npmjs.org/
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      # OIDC-based publish: npm detects the Actions environment and exchanges a
+      # short-lived credential automatically — no auth secret in the env.
+      # Provenance is generated automatically.
       - name: Publish
         run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
