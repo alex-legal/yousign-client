@@ -23,7 +23,13 @@ jobs:
         run: pnpm run verify
       - name: Build dist
         run: pnpm run build
+      # Diagnostic: fail early with a clear auth error instead of npm's cryptic
+      # E404 if the NPM_TOKEN secret is expired/revoked or lacks publish rights.
+      - name: Check npm auth
+        run: npm whoami --registry https://registry.npmjs.org/
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Publish
         run: npm publish --access public
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.npm_token }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
